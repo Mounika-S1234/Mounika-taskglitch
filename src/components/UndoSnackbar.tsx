@@ -10,7 +10,10 @@ export default function UndoSnackbar({ open, onClose, onUndo }: Props) {
   return (
     <Snackbar
       open={open}
-      onClose={onClose}
+      onClose={(_, reason) => {
+        // Always clear lastDeleted on timeout or manual close
+        if (reason !== 'clickaway') onClose();
+      }}
       autoHideDuration={4000}
       message="Task deleted"
       action={<Button color="secondary" size="small" onClick={onUndo}>Undo</Button>}
@@ -18,5 +21,3 @@ export default function UndoSnackbar({ open, onClose, onUndo }: Props) {
     />
   );
 }
-
-
