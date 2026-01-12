@@ -27,8 +27,8 @@ const statuses: Status[] = ['Todo', 'In Progress', 'Done'];
 
 export default function TaskForm({ open, onClose, onSubmit, existingTitles, initial }: Props) {
   const [title, setTitle] = useState('');
-  const [revenue, setRevenue] = useState<number | ''>('');
-  const [timeTaken, setTimeTaken] = useState<number | ''>('');
+  const [revenue, setRevenue] = useState('');
+  const [timeTaken, setTimeTaken] = useState('');
   const [priority, setPriority] = useState<Priority | ''>('');
   const [status, setStatus] = useState<Status | ''>('');
   const [notes, setNotes] = useState('');
@@ -37,8 +37,8 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     if (!open) return;
     if (initial) {
       setTitle(initial.title);
-      setRevenue(initial.revenue);
-      setTimeTaken(initial.timeTaken);
+      setRevenue(initial.revenue?.toString() ?? '');
+      setTimeTaken(initial.timeTaken?.toString() ?? '');
       setPriority(initial.priority);
       setStatus(initial.status);
       setNotes(initial.notes ?? '');
@@ -55,45 +55,50 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
   const duplicateTitle = useMemo(() => {
     const current = title.trim().toLowerCase();
     if (!current) return false;
-    const others = initial ? existingTitles.filter(t => t.toLowerCase() !== initial.title.toLowerCase()) : existingTitles;
+    const others = initial
+      ? existingTitles.filter(t => t.toLowerCase() !== initial.title.toLowerCase())
+      : existingTitles;
     return others.map(t => t.toLowerCase()).includes(current);
   }, [title, existingTitles, initial]);
 
+  // ✅ validate string values but allow 0 for revenue and timeTaken
   const canSubmit =
     !!title.trim() &&
     !duplicateTitle &&
-    typeof revenue === 'number' && revenue >= 0 &&
-    typeof timeTaken === 'number' && timeTaken > 0 &&
+    revenue.trim() !== '' &&
+    !isNaN(Number(revenue)) &&
+    Number(revenue) >= 0 &&
+    timeTaken.trim() !== '' &&
+    !isNaN(Number(timeTaken)) &&
+    Number(timeTaken) >= 0 && // allow 0
     !!priority &&
     !!status;
 
- const handleSubmit = () => {
-  const safeTime = typeof timeTaken === 'number' && timeTaken > 0 ? timeTaken : 1;
+  const handleSubmit = () => {
+    // convert strings to numbers directly
+    const revenueNum = Number(revenue);
+    const timeNum = Number(timeTaken);
 
-  const payload: Omit<Task, 'id'> & { id?: string } = {
-    title: title.trim(),
-    revenue: typeof revenue === 'number' ? revenue : 0,
-    timeTaken: safeTime,
-    priority: ((priority || 'Medium') as Priority),
-    status: ((status || 'Todo') as Status),
-    notes: notes.trim() || undefined,
+    // ✅ allow 0, fallback only if invalid (NaN or negative)
+    const payload: Omit<Task, 'id'> & { id?: string } = {
+      title: title.trim(),
+      revenue: !isNaN(revenueNum) && revenueNum >= 0 ? revenueNum : 0,
+      timeTaken: !isNaN(timeNum) && timeNum >= 0 ? timeNum : 0, // now 0 is valid
+      priority: priority as Priority,
+      status: status as Status,
+      notes: notes.trim() || undefined,
+      createdAt: initial?.createdAt ?? new Date().toISOString(),
+      completedAt:
+        status === 'Done'
+          ? initial?.completedAt ?? new Date().toISOString()
+          : undefined,
+      ...(initial ? { id: initial.id } : {}),
+    };
 
-    // ✅ FIX: createdAt is REQUIRED
-    createdAt: initial?.createdAt ?? new Date().toISOString(),
-
-    // optional but correct
-    completedAt:
-      status === 'Done'
-        ? initial?.completedAt ?? new Date().toISOString()
-        : undefined,
-
-    ...(initial ? { id: initial.id } : {}),
+    console.log('Payload:', payload); // ✅ debug output
+    onSubmit(payload);
+    onClose();
   };
-
-  onSubmit(payload);
-  onClose();
-};
-
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -114,7 +119,7 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
               label="Revenue"
               type="number"
               value={revenue}
-              onChange={e => setRevenue(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={e => setRevenue(e.target.value)}
               inputProps={{ min: 0, step: 1 }}
               required
               fullWidth
@@ -123,8 +128,8 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
               label="Time Taken (h)"
               type="number"
               value={timeTaken}
-              onChange={e => setTimeTaken(e.target.value === '' ? '' : Number(e.target.value))}
-              inputProps={{ min: 1, step: 1 }}
+              onChange={e => setTimeTaken(e.target.value)}
+              inputProps={{ min: 0, step: 1 }} // allow 0
               required
               fullWidth
             />
@@ -132,22 +137,42 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <FormControl fullWidth required>
               <InputLabel id="priority-label">Priority</InputLabel>
-              <Select labelId="priority-label" label="Priority" value={priority} onChange={e => setPriority(e.target.value as Priority)}>
+              <Select
+                labelId="priority-label"
+                label="Priority"
+                value={priority}
+                onChange={e => setPriority(e.target.value as Priority)}
+              >
                 {priorities.map(p => (
-                  <MenuItem key={p} value={p}>{p}</MenuItem>
+                  <MenuItem key={p} value={p}>
+                    {p}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
             <FormControl fullWidth required>
               <InputLabel id="status-label">Status</InputLabel>
-              <Select labelId="status-label" label="Status" value={status} onChange={e => setStatus(e.target.value as Status)}>
+              <Select
+                labelId="status-label"
+                label="Status"
+                value={status}
+                onChange={e => setStatus(e.target.value as Status)}
+              >
                 {statuses.map(s => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
+                  <MenuItem key={s} value={s}>
+                    {s}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Stack>
-          <TextField label="Notes" value={notes} onChange={e => setNotes(e.target.value)} multiline minRows={2} />
+          <TextField
+            label="Notes"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            multiline
+            minRows={2}
+          />
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -159,5 +184,3 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     </Dialog>
   );
 }
-
-
