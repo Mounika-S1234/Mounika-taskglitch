@@ -30,7 +30,12 @@ function AppContent() {
     lastDeleted,
     clearLastDeleted // ✅ added
   } = useTasksContext();
-
+  
+console.log('Sorted tasks:', derivedSorted.map(t => ({
+  title: t.title,
+  roi: t.roi,
+  priority: t.priority
+})));
   const [q, setQ] = useState('');
   const [fStatus, setFStatus] = useState<string>('All');
   const [fPriority, setFPriority] = useState<string>('All');
@@ -77,7 +82,8 @@ function AppContent() {
   const handleCloseUndo = useCallback(() => {
     clearLastDeleted();
   }, [clearLastDeleted]);
-
+  
+  
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>

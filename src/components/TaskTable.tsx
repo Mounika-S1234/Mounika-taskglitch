@@ -25,6 +25,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
     setEditing(null);
     setOpenForm(true);
   };
+
   const handleEditClick = (task: Task) => {
     setEditing(task);
     setOpenForm(true);
@@ -61,12 +62,16 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
             </TableHead>
             <TableBody>
               {tasks.map(t => (
-                <TableRow key={t.id} hover onClick={() => setDetails(t)} sx={{ cursor: 'pointer' }}>
+                <TableRow
+                  key={t.id}
+                  hover
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => setDetails(t)} // row click opens View dialog
+                >
                   <TableCell>
                     <Stack spacing={0.5}>
                       <Typography fontWeight={600}>{t.title}</Typography>
                       {t.notes && (
-                        // Injected bug: render notes as HTML (XSS risk)
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -85,12 +90,25 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Tooltip title="Edit">
-                        <IconButton onClick={() => handleEditClick(t)} size="small">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ prevents row click
+                            handleEditClick(t);
+                          }}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton onClick={() => onDelete(t.id)} size="small" color="error">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ prevents row click
+                            onDelete(t.id);
+                          }}
+                        >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -101,7 +119,9 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
               {tasks.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7}>
-                    <Box py={6} textAlign="center" color="text.secondary">No tasks yet. Click "Add Task" to get started.</Box>
+                    <Box py={6} textAlign="center" color="text.secondary">
+                      No tasks yet. Click "Add Task" to get started.
+                    </Box>
                   </TableCell>
                 </TableRow>
               )}
@@ -109,6 +129,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
           </Table>
         </TableContainer>
       </CardContent>
+
       <TaskForm
         open={openForm}
         onClose={() => setOpenForm(false)}
@@ -116,9 +137,13 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
         existingTitles={existingTitles}
         initial={editing}
       />
-      <TaskDetailsDialog open={!!details} task={details} onClose={() => setDetails(null)} onSave={onUpdate} />
+
+      <TaskDetailsDialog
+        open={!!details}
+        task={details}
+        onClose={() => setDetails(null)}
+        onSave={onUpdate}
+      />
     </Card>
   );
 }
-
-
